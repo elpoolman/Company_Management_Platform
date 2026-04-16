@@ -1,0 +1,29 @@
+Run started:2026-04-09 17:15:31.782066
+
+Test results:
+>> Issue: [B303:blacklist] Use of insecure MD2, MD4, MD5, or SHA1 hash function.
+   Severity: Medium   Confidence: High
+   Location: ./db/__init__.py:10
+   More Info: https://bandit.readthedocs.io/en/latest/blacklists/blacklist_calls.html#b303-md5
+9	def hash_password(password):
+10	    return hashlib.md5(password.encode()).hexdigest()
+11	
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 403
+	Total lines skipped (#nosec): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 1.0
+		High: 0.0
+	Total issues (by confidence):
+		Undefined: 0.0
+		Low: 0.0
+		Medium: 0.0
+		High: 1.0
+Files skipped (0):
