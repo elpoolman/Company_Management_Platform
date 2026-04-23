@@ -24,7 +24,6 @@ def login():
 
     next_url = request.args.get('next', url_for('dashboard'))
 
-    # Validación de redirección (Sección 2.3)
     if not is_safe_url(next_url):
         next_url = url_for('dashboard')
 
@@ -32,17 +31,13 @@ def login():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
 
-        # -----------------------------
-        # 3. Validación de entrada (Sección 2.1)
-        # -----------------------------
+
         if not username.isalnum():
             flash("Invalid input format", "danger")
             return render_template('auth/login.html', next_url=next_url)
 
         conn = get_users_connection()
 
-
-        # Cambiamos SELECT * por columnas específicas como pide el informe
         user = conn.execute(
             "SELECT id, username, password, role, company_id FROM users WHERE username = ?",
             (username,)
