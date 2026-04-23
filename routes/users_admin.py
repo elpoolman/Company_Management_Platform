@@ -1,9 +1,7 @@
 from flask import request, redirect, render_template, session, flash
 from server import app
 from db import get_users_connection, get_data_connection, hash_password
-from flask_wtf.csrf import CSRFProtect
 
-csrf = CSRFProtect(app)
 
 # =========================
 # LISTAR USUARIOS

@@ -1,24 +1,6 @@
 from flask import request, redirect, render_template, session, flash
 from server import app
 from db import get_data_connection
-from flask_wtf.csrf import CSRFProtect
-
-csrf = CSRFProtect(app)
-
-# =========================
-# LISTAR EMPRESAS
-# =========================
-@app.route('/admin/companies')
-def admin_list_companies():
-    if session.get('role') != 'admin':
-        return render_template('errors/403.html'), 403
-
-    conn = get_data_connection()
-    companies = conn.execute("SELECT * FROM companies").fetchall()
-    conn.close()
-
-    return render_template('admin/admin_companies.html', companies=companies)
-
 
 # =========================
 # AÑADIR EMPRESA (SEGURO)
