@@ -4,7 +4,7 @@ from db import get_data_connection
 from urllib.parse import urlparse, urljoin
 
 # -----------------------------
-# 1. Validación de Redirección Abierta (CWE-601 - Sección 2.3)
+# 1. Validación de Redirección Abierta 
 # -----------------------------
 def is_safe_url(target):
     if not target:
@@ -14,7 +14,7 @@ def is_safe_url(target):
     return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
 
 # -----------------------------
-# 2. Forzado de HTTPS (CWE-319 - Sección 2.5)
+# 2. Forzado de HTTPS 
 # -----------------------------
 @app.before_request
 def force_https():
@@ -34,20 +34,20 @@ def admin_add_company():
         company_name = request.form.get('company_name', '').strip()
         owner = request.form.get('owner', '').strip()
 
-        # A. Validación de entrada (Sección 2.1)
+        # A. Validación de entrada 
         if not company_name or not owner:
             flash("All fields are required.", "danger")
             return redirect(url_for('admin_add_company'))
 
-        # B. Sanitización Alfanumérica para el nombre de empresa (Opcional pero recomendado por Pablo)
-        # Sustituimos espacios por nada para la comprobación isalnum o usamos regex
+        # B. Sanitización Alfanumérica para el nombre de empresa 
+
         if not company_name.replace(" ", "").isalnum():
             flash("Invalid characters in company name.", "danger")
             return redirect(url_for('admin_add_company'))
 
         conn = get_data_connection()
 
-        # C. CONSULTA PARAMETRIZADA (ANTI-SQLi - CWE-89)
+        # C. CONSULTA PARAMETRIZADA
         conn.execute(
             "INSERT INTO companies (name, owner) VALUES (?, ?)",
             (company_name, owner)
@@ -61,7 +61,7 @@ def admin_add_company():
         # Redirección Segura
         next_page = request.args.get('next')
         if not is_safe_url(next_page):
-            next_page = url_for('admin_list_companies') # Asumiendo que esta es la ruta de lista
+            next_page = url_for('admin_list_companies') 
         return redirect(next_page)
 
     return render_template('admin/admin_companies.html')
@@ -84,8 +84,6 @@ def delete_company():
 
     conn = get_data_connection()
 
-    # D. ELIMINACIÓN PARAMETRIZADA Y EN CASCADA MANUAL
-    # Evita que queden comentarios huérfanos en la DB
     conn.execute("DELETE FROM companies WHERE id = ?", (company_id,))
     conn.execute("DELETE FROM comments WHERE company_id = ?", (company_id,))
 
