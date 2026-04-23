@@ -1,77 +1,84 @@
-from db import get_users_connection
-from flask import request, redirect, render_template, session, flash, url_for
-from server import app
-from urllib.parse import urlparse, urljoin # Se añade urljoin para robustez
+from flask import Blueprint, request, render_template, redirect, url_for, session, flash
 import bcrypt
+from db import get_db
+from urllib.parse import urlparse, urljoin
 
+auth = Blueprint('auth', __name__)
 
+# ---------------------------------------------------------
+# 1. Validación de Open Redirect
+# ---------------------------------------------------------
 def is_safe_url(target):
-    # Corrección: El informe exige validar contra el netloc del host
+    """
+    Asegura que la redirección sea interna al mismo dominio.
+    """
+    if not target:
+        return False
     ref_url = urlparse(request.host_url)
     test_url = urlparse(urljoin(request.host_url, target))
     return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
 
-
-@app.before_request
-def force_https():
-    if not request.is_secure:
-        return redirect(request.url.replace("http://", "https://"))
-
-@app.route('/login', methods=['GET', 'POST'])
+# ---------------------------------------------------------
+# Login
+# ---------------------------------------------------------
+@auth.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'username' in session:
+    db = get_db()
+    
+    if 'user_id' in session:
         return redirect(url_for('dashboard'))
 
-    next_url = request.args.get('next', url_for('dashboard'))
-
-    if not is_safe_url(next_url):
-        next_url = url_for('dashboard')
+    # Capturamos el destino de redirección
+    next_url = request.args.get('next')
 
     if request.method == 'POST':
-        username = request.form.get('username', '')
+        username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
 
-
+        # A. Validación Alfanumérica (Sección 2.1)
         if not username.isalnum():
-            flash("Invalid input format", "danger")
-            return render_template('auth/login.html', next_url=next_url)
+            flash("Formato de usuario inválido.", "danger")
+            return render_template('login.html', next=next_url)
 
-        conn = get_users_connection()
-
-        user = conn.execute(
-            "SELECT id, username, password, role, company_id FROM users WHERE username = ?",
+        # B. Consulta Segura y Control de Columnas (CWE-89 / CWE-200)
+        # Cambiamos SELECT * por columnas específicas
+        user = db.execute(
+            "SELECT id, username, password, role FROM users WHERE username = ?",
             (username,)
         ).fetchone()
 
-        conn.close()
-
+        # C. Verificación de Hash con Bcrypt (Sección 2.2)
         if user:
-            stored_password = user['password']
-            if isinstance(stored_password, str):
-                stored_password = stored_password.encode('utf-8')
+            stored_hash = user['password']
+            if isinstance(stored_hash, str):
+                stored_hash = stored_hash.encode('utf-8')
 
             try:
-                # Uso estricto de bcrypt como pide el informe
-                if bcrypt.checkpw(password.encode('utf-8'), stored_password):
-                    session.clear() # Limpieza de sesión previa por seguridad
+                if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
+                    # Login exitoso: Limpiamos sesión previa (Fijación de Sesión)
+                    session.clear()
+                    
                     session['user_id'] = user['id']
                     session['username'] = user['username']
                     session['role'] = user['role']
-                    session['company_id'] = user['company_id']
                     session.permanent = True
 
+                    # D. Validación de Redirección (Sección 2.3)
+                    if not is_safe_url(next_url):
+                        return redirect(url_for('dashboard'))
+                    
                     return redirect(next_url)
             except (ValueError, TypeError):
-                # Falla silenciosa ante hashes mal formados (MD5 antiguo)
+                # Fallo silencioso si el hash es MD5 antiguo o está corrupto
                 pass
 
-        flash("Invalid username or password", "danger")
-        return render_template('auth/login.html', next_url=next_url)
+        flash("Credenciales inválidas.", "danger")
+        return render_template('login.html', next=next_url)
 
-    return render_template('auth/login.html', next_url=next_url)
+    return render_template('login.html', next=next_url)
 
-@app.route('/logout')
+@auth.route('/logout')
 def logout():
     session.clear()
-    flash("You have been logged out.", "info")
-    return redirect(url_for('login'))
+    flash("Sesión cerrada.", "info")
+    return redirect(url_for('auth.login'))
