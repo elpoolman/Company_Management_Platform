@@ -4,18 +4,14 @@ from server import app
 from urllib.parse import urlparse, urljoin # Se añade urljoin para robustez
 import bcrypt
 
-# -----------------------------
-# 1. Validación de Open Redirect (CWE-601)
-# -----------------------------
+
 def is_safe_url(target):
     # Corrección: El informe exige validar contra el netloc del host
     ref_url = urlparse(request.host_url)
     test_url = urlparse(urljoin(request.host_url, target))
     return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
 
-# -----------------------------
-# 2. Forzado de HTTPS (CWE-319) - IMPLEMENTADO
-# -----------------------------
+
 @app.before_request
 def force_https():
     if not request.is_secure:
@@ -45,9 +41,7 @@ def login():
 
         conn = get_users_connection()
 
-        # -----------------------------
-        # 4. Corrección CWE-200 y CWE-89 (Sección 2.1)
-        # -----------------------------
+
         # Cambiamos SELECT * por columnas específicas como pide el informe
         user = conn.execute(
             "SELECT id, username, password, role, company_id FROM users WHERE username = ?",
@@ -56,9 +50,6 @@ def login():
 
         conn.close()
 
-        # -----------------------------
-        # 5. Seguridad de contraseña (Sección 2.2)
-        # -----------------------------
         if user:
             stored_password = user['password']
             if isinstance(stored_password, str):
